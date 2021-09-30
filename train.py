@@ -161,18 +161,18 @@ def main_function(args):
                                 rend_util.lin2img,
                                 H=render_kwargs_test['H'], W=render_kwargs_test['W'],
                                 batched=render_kwargs_test['batched'])
-                            logger.add_imgs(to_img(target_rgb), 'val/gt_rgb', it)
-                            logger.add_imgs(to_img(rgb), 'val/predicted_rgb', it)
-                            logger.add_imgs(to_img((depth_v/(depth_v.max()+1e-10)).unsqueeze(-1)), 'val/pred_depth_volume', it)
-                            logger.add_imgs(to_img(ret['mask_volume'].unsqueeze(-1)), 'val/pred_mask_volume', it)
+                            logger.add_imgs(to_img(target_rgb), 'gt_rgb', it)
+                            logger.add_imgs(to_img(rgb), 'predicted_rgb', it)
+                            logger.add_imgs(to_img((depth_v/(depth_v.max()+1e-10)).unsqueeze(-1)), 'pred_depth_volume', it)
+                            logger.add_imgs(to_img(ret['mask_volume'].unsqueeze(-1)), 'pred_mask_volume', it)
                             if 'depth_surface' in ret:
-                                logger.add_imgs(to_img((ret['depth_surface']/ret['depth_surface'].max()).unsqueeze(-1)), 'val/pred_depth_surface', it)
+                                logger.add_imgs(to_img((ret['depth_surface']/ret['depth_surface'].max()).unsqueeze(-1)), 'pred_depth_surface', it)
                             if 'mask_surface' in ret:
-                                logger.add_imgs(to_img(ret['mask_surface'].unsqueeze(-1).float()), 'val/predicted_mask', it)
+                                logger.add_imgs(to_img(ret['mask_surface'].unsqueeze(-1).float()), 'predicted_mask', it)
                             if hasattr(trainer, 'val'):
                                 trainer.val(logger, ret, to_img, it, render_kwargs_test)
 
-                            logger.add_imgs(to_img(ret['normals_volume']/2.+0.5), 'val/predicted_normals', it)
+                            logger.add_imgs(to_img(ret['normals_volume']/2.+0.5), 'predicted_normals', it)
 
                     #-------------------
                     # validate mesh
