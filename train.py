@@ -24,7 +24,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 def main_function(args):
 
     init_env(args)
-    
+
     #----------------------------
     #-------- shortcuts ---------
     rank = get_rank()
@@ -36,11 +36,13 @@ def main_function(args):
     special_i_val_mesh = [int(i // world_size) for i in [3000, 5000, 7000]]
     exp_dir = args.training.exp_dir
     mesh_dir = os.path.join(exp_dir, 'meshes')
-    
+
     device = torch.device('cuda', local_rank)
 
 
     # logger
+    args.training.setdefault('log_grad_norm', False)
+
     logger = Logger(
         log_dir=exp_dir,
         img_dir=os.path.join(exp_dir, 'imgs'),
@@ -56,23 +58,25 @@ def main_function(args):
 
         # save configs
         io_util.save_config(args, os.path.join(exp_dir, 'config.yaml'))
-    
+
     dataset, val_dataset = get_data(args, return_val=True, val_downscale=args.data.get('val_downscale', 4.0))
     bs = args.data.get('batch_size', None)
     if args.ddp:
         train_sampler = DistributedSampler(dataset)
-        dataloader = torch.utils.data.DataLoader(dataset, sampler=train_sampler, batch_size=bs)
+        dataloader = torch.utils.data.DataLoader(dataset, sampler=train_sampler, batch_size=bs, num_workers=1)
         val_sampler = DistributedSampler(val_dataset)
-        valloader = torch.utils.data.DataLoader(val_dataset, sampler=val_sampler, batch_size=bs)
+        valloader = torch.utils.data.DataLoader(val_dataset, sampler=val_sampler, batch_size=bs, num_workers=1)
     else:
         dataloader = DataLoader(dataset,
             batch_size=bs,
             shuffle=True,
-            pin_memory=args.data.get('pin_memory', False))
+            pin_memory=args.data.get('pin_memory', False),
+            num_workers=1)
         valloader = DataLoader(val_dataset,
             batch_size=1,
-            shuffle=True)
-    
+            shuffle=True,
+            num_workers=1)
+
     # Create model
     model, trainer, render_kwargs_train, render_kwargs_test, volume_render_fn = get_model(args)
     model.to(device)
@@ -143,18 +147,18 @@ def main_function(args):
                     if i_val > 0 and int_it % i_val == 0:
                         with torch.no_grad():
                             (val_ind, val_in, val_gt) = next(iter(valloader))
-                            
+
                             intrinsics = val_in["intrinsics"].to(device)
                             c2w = val_in['c2w'].to(device)
-                            
+
                             # N_rays=-1 for rendering full image
                             rays_o, rays_d, select_inds = rend_util.get_rays(
                                 c2w, intrinsics, render_kwargs_test['H'], render_kwargs_test['W'], N_rays=-1)
-                            target_rgb = val_gt['rgb'].to(device)                      
+                            target_rgb = val_gt['rgb'].to(device)
                             rgb, depth_v, ret = volume_render_fn(rays_o, rays_d, calc_normal=True, detailed_output=True, **render_kwargs_test)
 
                             to_img = functools.partial(
-                                rend_util.lin2img, 
+                                rend_util.lin2img,
                                 H=render_kwargs_test['H'], W=render_kwargs_test['W'],
                                 batched=render_kwargs_test['batched'])
                             logger.add_imgs(to_img(target_rgb), 'val/gt_rgb', it)
@@ -167,9 +171,9 @@ def main_function(args):
                                 logger.add_imgs(to_img(ret['mask_surface'].unsqueeze(-1).float()), 'val/predicted_mask', it)
                             if hasattr(trainer, 'val'):
                                 trainer.val(logger, ret, to_img, it, render_kwargs_test)
-                            
+
                             logger.add_imgs(to_img(ret['normals_volume']/2.+0.5), 'val/predicted_normals', it)
-                    
+
                     #-------------------
                     # validate mesh
                     #-------------------
@@ -179,7 +183,7 @@ def main_function(args):
                             with torch.no_grad():
                                 io_util.cond_mkdir(mesh_dir)
                                 mesh_util.extract_mesh(
-                                    model.implicit_surface, 
+                                    model.implicit_surface,
                                     filepath=os.path.join(mesh_dir, '{:08d}.ply'.format(it)),
                                     volume_size=args.data.get('volume_size', 2.0),
                                     show_progress=is_master())
@@ -187,24 +191,24 @@ def main_function(args):
                     if it >= args.training.num_iters:
                         end = True
                         break
-                    
+
                     #-------------------
                     # train
                     #-------------------
                     start_time = time.time()
                     ret = trainer.forward(args, indices, model_input, ground_truth, render_kwargs_train, it)
-                    
+
                     losses = ret['losses']
                     extras = ret['extras']
 
                     for k, v in losses.items():
                         # log.info("{}:{} - > {}".format(k, v.shape, v.mean().shape))
                         losses[k] = torch.mean(v)
-                    
+
                     optimizer.zero_grad()
                     losses['total'].backward()
                     # NOTE: check grad before optimizer.step()
-                    if True:
+                    if args.training.log_grad_norm:
                         grad_norms = train_util.calc_grad_norm(model=model)
                     optimizer.step()
                     scheduler.step(it)  # NOTE: important! when world_size is not 1
@@ -219,7 +223,7 @@ def main_function(args):
                         # this will be used for plotting
                         logger.save_stats('stats.p')
                         t0 = time.time()
-                    
+
                     if is_master():
                         #----------------------------------------------------------------------------
                         #------------------- things only done in master -----------------------------
@@ -235,15 +239,16 @@ def main_function(args):
 
                     #-------------------
                     # log grads and learning rate
-                    for k, v in grad_norms.items():
-                        logger.add('grad', k, v, it)
+                    if args.training.log_grad_norm:
+                        for k, v in grad_norms.items():
+                            logger.add('grad', k, v, it)
                     logger.add('learning rates', 'whole', optimizer.param_groups[0]['lr'], it)
 
                     #-------------------
                     # log losses
                     for k, v in losses.items():
                         logger.add('losses', k, v.data.cpu().numpy().item(), it)
-                    
+
                     #-------------------
                     # log extras
                     names = ["radiance", "alpha", "implicit_surface", "implicit_nablas_norm", "sigma_out", "radiance_out"]
@@ -258,13 +263,14 @@ def main_function(args):
                             logger.add("extras_{}".format(n), "{}.norm".format(p), extras[key].norm().data.cpu().numpy().item(), it)
                     if 'scalars' in extras:
                         for k, v in extras['scalars'].items():
-                            logger.add('scalars', k, v.mean(), it)                           
+                            logger.add('scalars', k, v.mean(), it)
 
                     #---------------------
                     # end of one iteration
                     end_time = time.time()
                     log.debug("=> One iteration time is {:.2f}".format(end_time - start_time))
-                    
+                    logger.add('time', 'iteration_time', end_time - start_time, it)
+
                     it += world_size
                     if is_master():
                         pbar.update(world_size)

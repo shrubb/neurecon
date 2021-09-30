@@ -21,7 +21,7 @@ def normalize(vec, axis=-1):
     return vec / (np.linalg.norm(vec, axis=axis, keepdims=True) + 1e-9)
 
 def view_matrix(
-    forward: np.ndarray, 
+    forward: np.ndarray,
     up: np.ndarray,
     cam_location: np.ndarray):
     rot_z = normalize(forward)
@@ -42,8 +42,8 @@ def poses_avg(poses):
     return c2w
 
 def look_at(
-    cam_location: np.ndarray, 
-    point: np.ndarray, 
+    cam_location: np.ndarray,
+    point: np.ndarray,
     up=np.array([0., -1., 0.])          # openCV convention
     # up=np.array([0., 1., 0.])         # openGL convention
     ):
@@ -60,7 +60,7 @@ def c2w_track_spiral(c2w, up_vec, rads, focus: float, zrate: float, rots: int, N
         c2w ([4,4] or [3,4]):   camera to world matrix (of the spiral center, with average rotation and average translation)
         up_vec ([3,]):          vector pointing up
         rads ([3,]):            radius of x,y,z direction, of the spiral track
-        # zdelta ([float]):       total delta z that is allowed to change 
+        # zdelta ([float]):       total delta z that is allowed to change
         focus (float):          a focus value (to be looked at) (in camera coordinates)
         zrate ([float]):        a factor multiplied to z's angle
         rots ([int]):           number of rounds to rotate
@@ -69,14 +69,14 @@ def c2w_track_spiral(c2w, up_vec, rads, focus: float, zrate: float, rots: int, N
 
     c2w_tracks = []
     rads = np.array(list(rads) + [1.])
-    
+
     # focus_in_cam = np.array([0, 0, -focus, 1.])   # openGL convention
     focus_in_cam = np.array([0, 0, focus, 1.])      # openCV convention
     focus_in_world = np.dot(c2w[:3, :4], focus_in_cam)
 
     for theta in np.linspace(0., 2. * np.pi * rots, N+1)[:-1]:
         cam_location = np.dot(
-            c2w[:3, :4], 
+            c2w[:3, :4],
             # np.array([np.cos(theta), -np.sin(theta), -np.sin(theta*zrate), 1.]) * rads    # openGL convention
             np.array([np.cos(theta), np.sin(theta), np.sin(theta*zrate), 1.]) * rads        # openCV convention
         )
@@ -106,27 +106,27 @@ def smoothed_motion_interpolation(full_range, num_samples, uniform_proportion=1/
 
 
 def visualize_cam_on_circle(intr, extrs, up_vec, c0):
-    
+
     import matplotlib
     import matplotlib.pyplot as plt
     from tools.vis_camera import draw_camera
-    
+
     cam_width = 0.2/2     # Width/2 of the displayed camera.
     cam_height = 0.1/2    # Height/2 of the displayed camera.
     scale_focal = 2000        # Value to scale the focal length.
-    
-    
+
+
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     # ax.set_aspect("equal")
-    ax.set_aspect("auto")    
+    ax.set_aspect("auto")
 
     matplotlib.rcParams.update({'font.size': 22})
     #----------- draw cameras
     min_values, max_values = draw_camera(ax, intr, cam_width, cam_height, scale_focal, extrs, True)
 
     radius = np.linalg.norm(c0)
-    
+
     #----------- draw small circle
     angles = np.linspace(0, np.pi * 2., 180)
     rots = R.from_rotvec(angles[:, None] * up_vec[None, :])
@@ -134,7 +134,7 @@ def visualize_cam_on_circle(intr, extrs, up_vec, c0):
     pts = rots.apply(c0)
     # [x, z, -y]
     ax.plot(pts[:, 0], pts[:, 2], -pts[:, 1], color='black')
-    
+
     #----------- draw sphere
     u = np.linspace(0, 2 * np.pi, 100)
     v = np.linspace(0, np.pi, 100)
@@ -142,42 +142,45 @@ def visualize_cam_on_circle(intr, extrs, up_vec, c0):
     y = radius * np.outer(np.sin(u), np.sin(v))
     z = radius * np.outer(np.ones(np.size(u)), np.cos(v))
     ax.plot_surface(x, y, z,  rstride=4, cstride=4, color='grey', linewidth=0, alpha=0.1)
-    
+
     #----------- draw axis
     axis = np.array([[0,0,0,1,0,0], [0,0,0,0,1,0], [0,0,0,0,0,1]])
-    X, Y, Z, U, V, W = zip(*axis) 
+    X, Y, Z, U, V, W = zip(*axis)
     ax.quiver(X[0], Z[0], -Y[0], U[0], W[0], -V[0], color='red')
     ax.quiver(X[1], Z[1], -Y[1], U[1], W[1], -V[1], color='green')
     ax.quiver(X[2], Z[2], -Y[2], U[2], W[2], -V[2], color='blue')
-    
+
     ax.set_xlabel('x')
     ax.set_ylabel('z')
     ax.set_zlabel('-y')
-    
-    plt.show()
+
+    output_image_path = "cameras.png"
+    log.warning(f"=> Not displaying, writing to '{output_image_path}' instead")
+    fig.savefig(output_image_path)
+    # plt.show()
 
 
 def visualize_cam_spherical_spiral(intr, extrs, up_vec, c0, focus_center, n_rots, up_angle):
     import matplotlib
     import matplotlib.pyplot as plt
     from tools.vis_camera import draw_camera
-    
+
     cam_width = 0.2/2     # Width/2 of the displayed camera.
     cam_height = 0.1/2    # Height/2 of the displayed camera.
     scale_focal = 2000        # Value to scale the focal length.
-    
-    
+
+
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     # ax.set_aspect("equal")
-    ax.set_aspect("auto")    
+    ax.set_aspect("auto")
 
     matplotlib.rcParams.update({'font.size': 22})
     #----------- draw cameras
     min_values, max_values = draw_camera(ax, intr, cam_width, cam_height, scale_focal, extrs, True)
 
     radius = np.linalg.norm(c0)
-    
+
     #----------- draw small circle
     # key rotations of a spherical spiral path
     num_pts = int(n_rots * 180.)
@@ -192,7 +195,7 @@ def visualize_cam_spherical_spiral(intr, extrs, up_vec, c0, focus_center, n_rots
     pts = rots_phi.apply(pts)
     # [x, z, -y]
     ax.plot(pts[:, 0], pts[:, 2], -pts[:, 1], color='black')
-    
+
     #----------- draw sphere
     u = np.linspace(0, 2 * np.pi, 100)
     v = np.linspace(0, np.pi, 100)
@@ -200,26 +203,29 @@ def visualize_cam_spherical_spiral(intr, extrs, up_vec, c0, focus_center, n_rots
     y = radius * np.outer(np.sin(u), np.sin(v))
     z = radius * np.outer(np.ones(np.size(u)), np.cos(v))
     ax.plot_surface(x, y, z,  rstride=4, cstride=4, color='grey', linewidth=0, alpha=0.1)
-    
+
     #----------- draw axis
     axis = np.array([[0,0,0,1,0,0], [0,0,0,0,1,0], [0,0,0,0,0,1]])
-    X, Y, Z, U, V, W = zip(*axis) 
+    X, Y, Z, U, V, W = zip(*axis)
     ax.quiver(X[0], Z[0], -Y[0], U[0], W[0], -V[0], color='red')
     ax.quiver(X[1], Z[1], -Y[1], U[1], W[1], -V[1], color='green')
     ax.quiver(X[2], Z[2], -Y[2], U[2], W[2], -V[2], color='blue')
-    
+
     ax.set_xlabel('x')
     ax.set_ylabel('z')
     ax.set_zlabel('-y')
-    
-    plt.show()
+
+    output_image_path = "cameras.png"
+    log.warning(f"=> Not displaying, writing to '{output_image_path}' instead")
+    fig.savefig(output_image_path)
+    # plt.show()
 
 
 def main_function(args):
     do_render_mesh = args.render_mesh is not None
     if do_render_mesh:
         import open3d as o3d
-    
+
     io_util.cond_mkdir('./out')
 
     model, trainer, render_kwargs_train, render_kwargs_test, render_fn = get_model(args)
@@ -232,12 +238,12 @@ def main_function(args):
     state_dict = torch.load(ckpt_file, map_location=args.device)
     model.load_state_dict(state_dict['model'])
     model.to(args.device)
-    
+
     if args.use_surface_render:
         assert args.use_surface_render == 'sphere_tracing' or args.use_surface_render == 'root_finding'
         from models.ray_casting import surface_render
         render_fn = functools.partial(surface_render, model=model, ray_casting_algo=args.use_surface_render)
-    
+
     if args.alter_radiance is not None:
         state_dict = torch.load(args.alter_radiance, map_location=args.device)
         radiance_state_dict = {}
@@ -290,7 +296,7 @@ def main_function(args):
     elif args.camera_path == 'spherical_spiral':
         up_angle = np.pi / 3.
         n_rots = 2.2
-        
+
         view_ids = args.camera_inds.split(',')
         assert len(view_ids) == 3, 'please select three views on a small circle, in CCW order (from above)'
         view_ids = [int(v) for v in view_ids]
@@ -302,18 +308,18 @@ def main_function(args):
         vec1 = centers[2] - centers[0]
         # the axis vertical to the small circle's area
         up_vec = normalize(np.cross(vec0, vec1))
-                
+
         # key rotations of a spherical spiral path
         sphere_thetas = np.linspace(0, np.pi * 2. * n_rots, args.num_views)
         sphere_phis = np.linspace(0, up_angle, args.num_views)
-        
+
         if True:
             # use the origin as the focus center
             focus_center = np.zeros([3])
         else:
             # use the center of the small circle as the focus center
             focus_center = np.dot(up_vec, centers[0]) * up_vec
-        
+
         # first rotate about up vec
         rots_theta = R.from_rotvec(sphere_thetas[:, None] * up_vec[None, :])
         render_centers = rots_theta.apply(centers[0])
@@ -321,17 +327,17 @@ def main_function(args):
         horizontal_vec = normalize(np.cross(render_centers-focus_center[None, :], up_vec[None, :], axis=-1))
         rots_phi = R.from_rotvec(sphere_phis[:, None] * horizontal_vec)
         render_centers = rots_phi.apply(render_centers)
-        
+
         render_c2ws = look_at(render_centers, focus_center[None, :], up=-up_vec)
-        
+
         if args.debug:
             # plot camera path
             intr = intrinsics.data.cpu().numpy()
             extrs = np.linalg.inv(render_c2ws)
             visualize_cam_spherical_spiral(intr, extrs, up_vec, centers[0], focus_center, n_rots, up_angle)
-            
+
     #------------------
-    # Small Circle Path: 
+    # Small Circle Path:
     #   assume three input views are on a small circle, then interpolate along this small circle
     #------------------
     elif args.camera_path == 'small_circle':
@@ -350,15 +356,15 @@ def main_function(args):
         len_chord = np.linalg.norm(vec1, axis=-1)
         # angle of the smaller arc between c0 and c1
         full_angle = np.arcsin(len_chord/2/radius) * 2.
-        
+
         all_angles = smoothed_motion_interpolation(full_angle, args.num_views)
-        
+
         rots = R.from_rotvec(all_angles[:, None] * up_vec[None, :])
         centers = rots.apply(centers[0])
-        
+
         # get c2w matrices
         render_c2ws = look_at(centers, np.zeros_like(centers), up=-up_vec)
-        
+
         if args.debug:
             # plot camera path
             intr = intrinsics.data.cpu().numpy()
@@ -385,7 +391,7 @@ def main_function(args):
             render_c2ws.append(c2w)
         render_c2ws = np.stack(render_c2ws, axis=0)
     #------------------
-    # Great Circle Path: 
+    # Great Circle Path:
     #   assume two input views are on a great circle, then interpolate along this great circle
     #------------------
     elif args.camera_path == 'great_circle':
@@ -409,16 +415,16 @@ def main_function(args):
         len_chord = np.linalg.norm(c0-c1, axis=-1)
         # angle of the smaller arc between c0 and c1
         full_angle = np.arcsin(len_chord/2/radius) * 2.
-        
+
         all_angles = smoothed_motion_interpolation(full_angle, args.num_views)
-        
+
         # get camera centers
         rots = R.from_rotvec(all_angles[:, None] * up_vec[None, :])
         centers = rots.apply(c0)
-        
+
         # get c2w matrices
         render_c2ws = look_at(centers, np.zeros_like(centers), up=-up_vec)
-        
+
         if args.debug:
             # plot camera path
             intr = intrinsics.data.cpu().numpy()
@@ -445,15 +451,15 @@ def main_function(args):
         vis.add_geometry(geometry)
         # opt = vis.get_render_option()
         # opt.mesh_show_back_face = True
-        
+
         cam = ctrl.convert_to_pinhole_camera_parameters()
         intr = intrinsics.data.cpu().numpy()
         # cam.intrinsic.set_intrinsics(W, H, intr[0,0], intr[1,1], intr[0,2], intr[1,2])
         cam.intrinsic.set_intrinsics(W, H, intr[0,0], intr[1,1], W/2-0.5, H/2-0.5)
         ctrl.convert_from_pinhole_camera_parameters(cam)
-        
 
-        
+
+
     for c2w in tqdm(render_c2ws, desc='rendering...') :
         if not args.debug and not args.disable_rgb:
             rays_o, rays_d, select_inds = rend_util.get_rays(torch.from_numpy(c2w).float().cuda()[None, ...], intrinsics[None, ...], H, W, N_rays=-1)
@@ -487,12 +493,12 @@ def main_function(args):
 
     def integerify(img):
         return (img*255.).astype(np.uint8)
-    
+
     rgb_imgs = [integerify(img) for img in rgb_imgs]
     depth_imgs = [integerify(img) for img in depth_imgs]
     normal_imgs = [integerify(img) for img in normal_imgs]
     mesh_imgs = [integerify(img) for img in mesh_imgs]
-        
+
 
     if not args.debug:
         if args.outbase is None:
@@ -516,7 +522,7 @@ def main_function(args):
                 imageio.mimwrite(os.path.join('out', '{}_rgb&mesh_{}.mp4'.format(outbase, post_fix)), rgb_and_mesh_imgs, fps=args.fps, quality=10)
                 rgb_and_normal_and_mesh_imgs = [np.concatenate([rgb, normal, mesh], axis=0) for rgb, normal, mesh in zip(rgb_imgs, normal_imgs, mesh_imgs)]
                 imageio.mimwrite(os.path.join('out', '{}_rgb&normal&mesh_{}.mp4'.format(outbase, post_fix)), rgb_and_normal_and_mesh_imgs, fps=args.fps, quality=10)
-                
+
 
 if __name__ == "__main__":
     # Arguments

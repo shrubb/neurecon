@@ -4,8 +4,6 @@ modified from https://github.com/opencv/opencv/blob/master/samples/python/camera
 '''
 
 from utils.print_fn import log
-# Python 2/3 compatibility
-from __future__ import print_function
 
 import numpy as np
 import cv2 as cv
@@ -13,7 +11,7 @@ import cv2 as cv
 from numpy import linspace
 import matplotlib
 
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 
 def inverse_homogeneoux_matrix(M):
     R = M[0:3, 0:3]
@@ -205,7 +203,10 @@ def visualize(camera_matrix, extrinsics):
     ax.set_zlabel('-y')
     ax.set_title('Extrinsic Parameters Visualization')
 
-    plt.show()
+    output_image_path = "cameras.png"
+    log.warning(f"=> Not displaying, writing to '{output_image_path}' instead")
+    fig.savefig(output_image_path)
+    # plt.show()
     log.info('Done')
 
 
@@ -214,11 +215,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--scan_id", type=int, default=40)
     args = parser.parse_args()
-    
+
     log.info(__doc__)
     # NOTE: jianfei: 20210722 newly checked. The coordinate is correct.
     #       note that the ticks on (-y) means the opposite of y coordinates.
-    
+
     ########################    modified: example code    ########################
     from dataio.DTU import SceneDataset
     import torch
