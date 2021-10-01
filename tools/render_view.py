@@ -3,6 +3,8 @@ from models.frameworks import get_model
 from utils.checkpoints import sorted_ckpts
 from utils.print_fn import log
 
+from pathlib import Path
+import pickle
 import os
 import math
 import imageio
@@ -154,9 +156,11 @@ def visualize_cam_on_circle(intr, extrs, up_vec, c0):
     ax.set_ylabel('z')
     ax.set_zlabel('-y')
 
-    output_image_path = "cameras.png"
-    log.warning(f"=> Not displaying, writing to '{output_image_path}' instead")
+    output_image_path = Path("./cameras_plot.pdf")
+    log.warning(f"=> Not displaying, writing to '{output_image_path}' (+ '.pkl') instead")
     fig.savefig(output_image_path)
+    with open(output_image_path.with_suffix('.pkl'), 'wb') as f:
+        pickle.dump(fig, f)
     # plt.show()
 
 
@@ -215,9 +219,11 @@ def visualize_cam_spherical_spiral(intr, extrs, up_vec, c0, focus_center, n_rots
     ax.set_ylabel('z')
     ax.set_zlabel('-y')
 
-    output_image_path = "cameras.png"
-    log.warning(f"=> Not displaying, writing to '{output_image_path}' instead")
+    output_image_path = Path("./cameras_plot.pdf")
+    log.warning(f"=> Not displaying, writing to '{output_image_path}' (+ '.pkl') instead")
     fig.savefig(output_image_path)
+    with open(output_image_path.with_suffix('.pkl'), 'wb') as f:
+        pickle.dump(fig, f)
     # plt.show()
 
 

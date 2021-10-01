@@ -2,6 +2,8 @@
 camera extrinsics visualization tools
 modified from https://github.com/opencv/opencv/blob/master/samples/python/camera_calibration_show_extrinsics.py
 '''
+import pickle
+from pathlib import Path
 
 from utils.print_fn import log
 
@@ -203,9 +205,11 @@ def visualize(camera_matrix, extrinsics):
     ax.set_zlabel('-y')
     ax.set_title('Extrinsic Parameters Visualization')
 
-    output_image_path = "cameras.png"
-    log.warning(f"=> Not displaying, writing to '{output_image_path}' instead")
+    output_image_path = Path("./cameras_plot.pdf")
+    log.warning(f"=> Not displaying, writing to '{output_image_path}' (+ '.pkl') instead")
     fig.savefig(output_image_path)
+    with open(output_image_path.with_suffix('.pkl'), 'wb') as f:
+        pickle.dump(fig, f)
     # plt.show()
     log.info('Done')
 
