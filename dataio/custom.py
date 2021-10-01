@@ -17,7 +17,7 @@ class SceneDataset(torch.utils.data.Dataset):
                  downscale=1.,   # [H, W]
                  cam_file=None,
                  scale_radius=-1,
-                 ):
+                 split='train'):
 
         self.instance_dir = data_dir
         assert os.path.exists(self.instance_dir), "Data directory is empty"
@@ -30,7 +30,7 @@ class SceneDataset(torch.utils.data.Dataset):
         mask_dir = '{0}/mask'.format(self.instance_dir)
         # mask_paths = sorted(glob_imgs(mask_dir))
         mask_ignore_dir = '{0}/mask_out'.format(self.instance_dir)
-        
+
         self.has_mask = os.path.exists(mask_dir) and len(os.listdir(mask_dir)) > 0
         self.has_mask_out = os.path.exists(mask_ignore_dir) and len(os.listdir(mask_ignore_dir)) > 0
 
@@ -39,9 +39,9 @@ class SceneDataset(torch.utils.data.Dataset):
             self.cam_file = '{0}/{1}'.format(self.instance_dir, cam_file)
 
         camera_dict = json.load(open(self.cam_file))
-        
+
         self.n_images = len(camera_dict)
-        
+
         cam_center_norms = []
         self.intrinsics_all = []
         self.c2w_all = []
@@ -72,7 +72,7 @@ class SceneDataset(torch.utils.data.Dataset):
             rgb = rgb.reshape(3, -1).transpose(1, 0)
             self.rgb_images.append(torch.from_numpy(rgb).float())
             fname_base = os.path.splitext(imgname)[0]
-            
+
             if self.has_mask:
                 object_mask = load_mask(os.path.join(mask_dir, "{}.png".format(fname_base)), downscale).reshape(-1)
                 self.object_masks.append(torch.from_numpy(object_mask).to(dtype=torch.bool))
@@ -153,6 +153,6 @@ if __name__ == "__main__":
     c2w = dataset.get_gt_pose(scaled=True).data.cpu().numpy()
     extrinsics = np.linalg.inv(c2w)  # camera extrinsics are w2c matrix
     camera_matrix = next(iter(dataset))[1]['intrinsics'].data.cpu().numpy()
-    
+
     from tools.vis_camera import visualize
     visualize(camera_matrix, extrinsics)

@@ -8,23 +8,24 @@ import torch
 
 
 class SceneDataset(torch.utils.data.Dataset):
-    def __init__(self, 
+    def __init__(self,
                  train_cameras,
                  data_dir,
                  downscale=1.,   # [H, W]
-                 scale_radius=-1):
+                 scale_radius=-1,
+                 split='train'):
         super().__init__()
-        
+
         self.instance_dir = data_dir
         assert os.path.exists(self.instance_dir), "Data directory is empty"
-        
+
         self.train_cameras = train_cameras
         self.downscale = downscale
-        
+
         image_dir = '{0}/blended_images'.format(self.instance_dir)
         # cam_dir = '{0}/cams'.format(self.instance_dir)
         cam_dir = '{0}/cams_normalized'.format(self.instance_dir)
-        
+
         self.intrinsics_all = []
         self.c2w_all = []
         self.rgb_images = []
@@ -36,22 +37,22 @@ class SceneDataset(torch.utils.data.Dataset):
             else:
                 basename = os.path.splitext(os.path.split(imgpath)[-1])[0]
                 self.basenames.append(basename)
-            
+
                 camfilepath = os.path.join(cam_dir, "{}_cam.txt".format(basename))
                 assert os.path.exists(camfilepath)
                 extrinsics, intrinsics = load_cam(camfilepath)
                 c2w = np.linalg.inv(extrinsics)
                 cam_center_norms.append(np.linalg.norm(c2w[:3,3]))
-                
+
                 # downscale intrinsics
                 intrinsics[0, 2] /= downscale
                 intrinsics[1, 2] /= downscale
                 intrinsics[0, 0] /= downscale
                 intrinsics[1, 1] /= downscale
-                
+
                 self.intrinsics_all.append(torch.from_numpy(intrinsics).float())
                 self.c2w_all.append(torch.from_numpy(c2w).float())
-            
+
                 rgb = load_rgb(imgpath, downscale)
                 _, self.H, self.W = rgb.shape
                 rgb = rgb.reshape(3, -1).transpose(1, 0)

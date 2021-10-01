@@ -15,7 +15,8 @@ class SceneDataset(torch.utils.data.Dataset):
                  data_dir,
                  downscale=1.,   # [H, W]
                  cam_file=None,
-                 scale_radius=-1):
+                 scale_radius=-1,
+                 split='train'):
 
         assert os.path.exists(data_dir), "Data directory is empty"
 
@@ -28,12 +29,12 @@ class SceneDataset(torch.utils.data.Dataset):
         mask_paths = sorted(glob_imgs(mask_dir))
 
         self.n_images = len(image_paths)
-        
+
         # determine width, height
         self.downscale = downscale
         tmp_rgb = load_rgb(image_paths[0], downscale)
         _, self.H, self.W = tmp_rgb.shape
-        
+
 
         self.cam_file = '{0}/cameras.npz'.format(self.instance_dir)
         if cam_file is not None:
@@ -51,14 +52,14 @@ class SceneDataset(torch.utils.data.Dataset):
             P = P[:3, :4]
             intrinsics, pose = load_K_Rt_from_P(P)
             cam_center_norms.append(np.linalg.norm(pose[:3,3]))
-            
+
             # downscale intrinsics
             intrinsics[0, 2] /= downscale
             intrinsics[1, 2] /= downscale
             intrinsics[0, 0] /= downscale
             intrinsics[1, 1] /= downscale
             # intrinsics[0, 1] /= downscale # skew is a ratio, do not scale
-            
+
             self.intrinsics_all.append(torch.from_numpy(intrinsics).float())
             self.c2w_all.append(torch.from_numpy(pose).float())
         max_cam_norm = max(cam_center_norms)

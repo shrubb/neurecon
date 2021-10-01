@@ -4,9 +4,10 @@ def get_data(args, return_val=False, val_downscale=4.0, **overwrite_cfgs):
         'scale_radius': args.data.get('scale_radius', -1),
         'downscale': args.data.downscale,
         'data_dir': args.data.data_dir,
-        'train_cameras': False
+        'train_cameras': False,
+        'split': 'train',
     }
-    
+
     if dataset_type == 'DTU':
         from .DTU import SceneDataset
         cfgs['cam_file'] = args.data.get('cam_file', None)
@@ -14,6 +15,8 @@ def get_data(args, return_val=False, val_downscale=4.0, **overwrite_cfgs):
         from .custom import SceneDataset
     elif dataset_type == 'BlendedMVS':
         from .BlendedMVS import SceneDataset
+    elif dataset_type == 'blender':
+        from .blender import SceneDataset
     else:
         raise NotImplementedError
 
@@ -21,6 +24,7 @@ def get_data(args, return_val=False, val_downscale=4.0, **overwrite_cfgs):
     dataset = SceneDataset(**cfgs)
     if return_val:
         cfgs['downscale'] = val_downscale
+        cfgs['split'] = 'val'
         val_dataset = SceneDataset(**cfgs)
         return dataset, val_dataset
     else:
