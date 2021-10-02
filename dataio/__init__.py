@@ -14,6 +14,8 @@ def get_data(args, return_val=False, val_downscale=4.0, **overwrite_cfgs):
         from .custom import SceneDataset
     elif dataset_type == 'BlendedMVS':
         from .BlendedMVS import SceneDataset
+    elif dataset_type == 'H3DS':
+        from .H3DS import SceneDataset
     else:
         raise NotImplementedError
 
