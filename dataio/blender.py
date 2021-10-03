@@ -75,6 +75,9 @@ class SceneDataset(torch.utils.data.Dataset):
         self.c2w_all[:, :3, 1] *= -1
         self.c2w_all[:, :3, 2] *= -1
 
+        # Weird requirement of this repository
+        self.c2w_all = list(self.c2w_all)
+
     def __len__(self):
         return len(self.rgb_images)
 

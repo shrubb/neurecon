@@ -30,9 +30,13 @@ def convert_sigma_samples_to_ply(
     """
     start_time = time.time()
 
-    verts, faces, normals, values = skimage.measure.marching_cubes(
-        input_3d_sigma_array, level=level, spacing=volume_size
-    )
+    try:
+        verts, faces, normals, values = skimage.measure.marching_cubes(
+            input_3d_sigma_array, level=level, spacing=volume_size
+        )
+    except ValueError as err:
+        log.warning(f"Error in marching cubes: {err}")
+        return
 
     # transform from voxel coordinates to camera coordinates
     # note x and y are flipped in the output of marching_cubes
@@ -98,7 +102,7 @@ def extract_mesh(implicit_surface, volume_size=2.0, level=0.0, N=512, filepath='
     xyz[:, 0] = (xyz[:, 0] * (s/(N-1))) + voxel_grid_origin[2]
     xyz[:, 1] = (xyz[:, 1] * (s/(N-1))) + voxel_grid_origin[1]
     xyz[:, 2] = (xyz[:, 2] * (s/(N-1))) + voxel_grid_origin[0]
-    
+
     def batchify(query_fn, inputs: torch.Tensor, chunk=chunk):
         out = []
         for i in tqdm(range(0, inputs.shape[0], chunk), disable=not show_progress):
@@ -110,4 +114,3 @@ def extract_mesh(implicit_surface, volume_size=2.0, level=0.0, N=512, filepath='
     out = batchify(implicit_surface.forward, xyz)
     out = out.reshape([N, N, N])
     convert_sigma_samples_to_ply(out, voxel_grid_origin, [float(v) / N for v in volume_size], filepath, level=level)
-    
